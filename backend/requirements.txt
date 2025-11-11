@@ -1,0 +1,31 @@
+# FastAPI and server
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
+pydantic==2.5.3
+pydantic-settings==2.1.0
+
+# NLP and ML libraries
+torch==2.1.2
+transformers==4.37.0
+sentence-transformers==2.3.1
+spacy==3.7.2
+textstat==0.7.3
+nltk==3.8.1
+
+# Database
+psycopg2-binary==2.9.9
+sqlalchemy==2.0.25
+chromadb==0.4.22
+redis==5.0.1
+
+# Utilities
+numpy==1.26.3
+pandas==2.1.4
+scikit-learn==1.4.0
+python-dotenv==1.0.0
+httpx==0.26.0
+
+# Testing
+pytest==7.4.4
+pytest-asyncio==0.23.3
