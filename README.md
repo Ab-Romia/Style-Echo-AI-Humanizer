@@ -251,6 +251,38 @@ print(response.json()["humanized_text"])
 # Output will match your casual, direct writing style
 ```
 
+## 🚀 Deployment
+
+### Hugging Face Spaces (Easiest)
+
+VoicePrint can be deployed directly to Hugging Face Spaces with the Gradio interface:
+
+```bash
+# Visit https://huggingface.co/spaces/Ab-Romia/voiceprint
+# Or deploy your own:
+1. Create new Space on Hugging Face
+2. Upload app.py, requirements-hf.txt (rename to requirements.txt), and backend/
+3. Your Space will automatically build and deploy!
+```
+
+See [DEPLOY.md](DEPLOY.md) for detailed deployment instructions including:
+- Hugging Face Spaces (with Gradio UI)
+- Docker deployment
+- Railway, Render, AWS EC2
+- Local development
+
+### Quick Deploy Commands
+
+```bash
+# Using Docker
+docker build -t voiceprint .
+docker run -p 7860:7860 voiceprint
+
+# Local with Gradio interface
+pip install -r requirements-hf.txt
+python app.py  # Opens at http://localhost:7860
+```
+
 ## Development Roadmap
 
 - [x] Core linguistic analysis engine
@@ -260,6 +292,9 @@ print(response.json()["humanized_text"])
 - [x] Style transfer engine
 - [x] Validation system
 - [x] REST API with FastAPI
+- [x] Gradio interface for Hugging Face
+- [x] Docker support
+- [x] Deployment guides
 - [ ] PostgreSQL integration
 - [ ] ChromaDB for embeddings
 - [ ] Redis caching layer

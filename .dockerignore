@@ -1,0 +1,43 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Data
+*.db
+*.sqlite
+chroma_data/
+models/
+data/
+
+# Logs
+*.log
+logs/
+
+# Documentation
+*.md
+!README_HF.md
+
+# Tests
+tests/
+test_*.py
+
+# Other
+.DS_Store
+Thumbs.db
+frontend/
