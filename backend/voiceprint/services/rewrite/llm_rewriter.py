@@ -16,8 +16,8 @@ caller can fall back to the rule-based rewriter.
 import os
 from typing import List, Optional
 
-from app.models.style_profile import StyleProfile
-from app.services.rewrite.profile_to_constraints import render_constraints
+from voiceprint.models.style_profile import StyleProfile
+from voiceprint.services.rewrite.profile_to_constraints import render_constraints
 
 
 class NoApiKeyError(RuntimeError):
@@ -148,6 +148,8 @@ class LlmRewriter:
         except Exception as exc:
             raise RuntimeError(f"LLM rewrite call failed: {exc}") from exc
 
+        if not response.choices:
+            raise RuntimeError("LLM rewrite returned no choices.")
         content = response.choices[0].message.content
         if not content or not content.strip():
             raise RuntimeError("LLM rewrite returned empty content.")

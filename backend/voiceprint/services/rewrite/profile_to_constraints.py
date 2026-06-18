@@ -9,7 +9,7 @@ The renderer never instructs em-dash usage and never emits an em-dash.
 """
 from typing import Any, Dict, List
 
-from app.models.style_profile import StyleProfile
+from voiceprint.models.style_profile import StyleProfile
 
 
 def render_constraints(profile: StyleProfile) -> str:

@@ -17,7 +17,7 @@ import gradio as gr
 # Make the backend package importable.
 sys.path.insert(0, str(Path(__file__).parent / "backend"))
 
-from app.services.voiceprint_service import VoicePrintService  # noqa: E402
+from voiceprint.services.voiceprint_service import VoicePrintService  # noqa: E402
 
 service = VoicePrintService()
 
@@ -48,7 +48,7 @@ def build_profile(sample1, sample2, sample3, sample4, sample5, profile_name):
     except Exception as exc:
         return f"Could not build the profile: {exc}", None, {}
 
-    from app.services.feedback import normalize_axes
+    from voiceprint.services.feedback import normalize_axes
 
     axes = normalize_axes(
         profile.linguistic_features, profile.stylometric_features

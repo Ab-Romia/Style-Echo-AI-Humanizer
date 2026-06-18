@@ -5,8 +5,8 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import router
-from app.config import get_settings
+from voiceprint.api.routes import router
+from voiceprint.config import get_settings
 
 # Set up logging
 logging.basicConfig(
@@ -57,7 +57,7 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(
-        "app.main:app",
+        "voiceprint.main:app",
         host=settings.api_host,
         port=settings.api_port,
         reload=settings.debug,

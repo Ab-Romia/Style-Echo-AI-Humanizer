@@ -18,7 +18,7 @@ from typing import List, Optional
 
 import numpy as np
 
-from app.models.style_profile import StyleProfile
+from voiceprint.models.style_profile import StyleProfile
 
 
 DEFAULT_DB_PATH = os.path.join("data", "voiceprint.db")

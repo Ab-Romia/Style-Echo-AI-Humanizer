@@ -9,9 +9,9 @@ Validates the quality of an adapted draft by checking:
 """
 from typing import Dict, Any, List
 import numpy as np
-from app.services.linguistic_analyzer import LinguisticAnalyzer
-from app.services.embedding_analyzer import EmbeddingAnalyzer
-from app.models.style_profile import StyleProfile
+from voiceprint.services.linguistic_analyzer import LinguisticAnalyzer
+from voiceprint.services.embedding_analyzer import EmbeddingAnalyzer
+from voiceprint.models.style_profile import StyleProfile
 
 
 class OutputValidator:
@@ -129,7 +129,9 @@ class OutputValidator:
         # Compare sentence length
         if "avg_sentence_length" in profile_features:
             target_avg = profile_features["avg_sentence_length"]
-            target_std = profile_features.get("sentence_length_std", 5)
+            # `or 5` guards against a profile whose samples are all uniform
+            # length, which makes the aggregated std 0 and would divide by zero.
+            target_std = profile_features.get("sentence_length_std", 5) or 5
             actual_avg = text_features.get("avg_sentence_length", 0)
 
             # Within 1 std dev is good

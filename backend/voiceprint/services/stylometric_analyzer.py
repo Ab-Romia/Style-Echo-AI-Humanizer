@@ -239,43 +239,43 @@ class StylometricAnalyzer:
         Returns:
             Dictionary with voice statistics
         """
-        passive_count = 0
-        active_count = 0
+        passive_sentences = 0
+        passive_constructions = 0
+        total_sentences = 0
 
         for sent in doc.sents:
-            # Check for passive voice patterns
-            # Passive voice typically has: auxiliary verb + past participle
+            total_sentences += 1
+            sentence_is_passive = False
+
+            # Passive voice typically pairs a past participle (VBN) with a "be"
+            # or "get" auxiliary. Count constructions for reference, but classify
+            # the whole sentence as passive if it contains at least one.
             for token in sent:
-                # Check if token is a past participle
-                if token.tag_ == "VBN":
-                    # Check if it has an auxiliary verb as a child or ancestor
-                    ancestors = list(token.ancestors)
-                    children = list(token.children)
-
-                    for ancestor in ancestors:
-                        if ancestor.lemma_ in ["be", "get"] and ancestor.pos_ == "AUX":
-                            passive_count += 1
+                if token.tag_ != "VBN":
+                    continue
+                for ancestor in token.ancestors:
+                    if ancestor.lemma_ in ("be", "get") and ancestor.pos_ == "AUX":
+                        passive_constructions += 1
+                        sentence_is_passive = True
+                        break
+                else:
+                    for child in token.children:
+                        if child.dep_ == "auxpass":
+                            passive_constructions += 1
+                            sentence_is_passive = True
                             break
-                    else:
-                        for child in children:
-                            if child.dep_ == "auxpass":
-                                passive_count += 1
-                                break
 
-            # Count active voice (sentences with clear subjects and active verbs)
-            has_subject = any(token.dep_ in ["nsubj", "nsubjpass"] for token in sent)
-            has_verb = any(token.pos_ == "VERB" for token in sent)
+            if sentence_is_passive:
+                passive_sentences += 1
 
-            if has_subject and has_verb:
-                active_count += 1
-
-        total_sentences = passive_count + active_count
-        passive_ratio = passive_count / total_sentences if total_sentences > 0 else 0.0
+        passive_ratio = (
+            passive_sentences / total_sentences if total_sentences > 0 else 0.0
+        )
 
         return {
             "passive_voice_ratio": passive_ratio,
             "active_voice_ratio": 1 - passive_ratio if total_sentences > 0 else 0.0,
-            "passive_constructions": passive_count,
+            "passive_constructions": passive_constructions,
         }
 
     def _analyze_sentence_starters(self, doc) -> Dict[str, Any]:

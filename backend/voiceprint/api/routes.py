@@ -11,7 +11,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.schemas.profile import (
+from voiceprint.schemas.profile import (
     AdaptRequest,
     AdaptResponse,
     StyleProfileCreate,
@@ -27,9 +27,9 @@ router = APIRouter()
 @lru_cache()
 def _build_service():
     """Build the service once, on first request, not at import time."""
-    from app.config import get_settings
-    from app.services.voiceprint_service import VoicePrintService
-    from app.store.sqlite_store import SqliteProfileStore
+    from voiceprint.config import get_settings
+    from voiceprint.services.voiceprint_service import VoicePrintService
+    from voiceprint.store.sqlite_store import SqliteProfileStore
 
     settings = get_settings()
     store = SqliteProfileStore(settings.profile_db_path)

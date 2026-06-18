@@ -7,12 +7,12 @@ be deterministic and explainable.
 """
 import pytest
 
-from app.services.linguistic_analyzer import LinguisticAnalyzer
-from app.services.stylometric_analyzer import (
+from voiceprint.services.linguistic_analyzer import LinguisticAnalyzer
+from voiceprint.services.stylometric_analyzer import (
     FUNCTION_WORD_LIST,
     StylometricAnalyzer,
 )
-from app.services.char_ngram import CharNgramProfiler
+from voiceprint.services.char_ngram import CharNgramProfiler
 
 
 FIXED_SAMPLE = (

@@ -124,9 +124,11 @@ def _build_sentence_diff(
     """
     Label each adapted sentence improved, regressed, or same.
 
-    The label compares the per-sentence voice match of the adapted text against
-    the average per-sentence voice match of the source draft. The threshold is
-    a small dead zone so tiny numeric wobble does not flip the label.
+    Each adapted sentence is compared to the source sentence in the same
+    position. When the rewrite changes the sentence count and an adapted
+    sentence has no positional counterpart, it falls back to the source draft's
+    mean per-sentence voice match. The threshold is a small dead zone so tiny
+    numeric wobble does not flip the label.
     """
     centroid = profile.get_style_centroid_array()
     if centroid is None or np.size(centroid) == 0:
@@ -137,15 +139,17 @@ def _build_sentence_diff(
     after_pairs = style_embedder.per_sentence_match(adapted_text, centroid, nlp)
 
     if before_pairs:
-        baseline = float(np.mean([score for _, score in before_pairs]))
+        source_mean = float(np.mean([score for _, score in before_pairs]))
     else:
-        baseline = 0.0
+        source_mean = 0.0
 
     diff: List[Dict[str, Any]] = []
-    for sentence, score in after_pairs:
-        if score > baseline + threshold:
+    for i, (sentence, score) in enumerate(after_pairs):
+        # Compare to the source sentence at the same position when one exists.
+        before_score = before_pairs[i][1] if i < len(before_pairs) else source_mean
+        if score > before_score + threshold:
             label = "improved"
-        elif score < baseline - threshold:
+        elif score < before_score - threshold:
             label = "regressed"
         else:
             label = "same"

@@ -25,10 +25,28 @@ class EmbeddingAnalyzer:
             model_name: Name of the sentence transformer model to use
             spacy_model: spaCy pipeline used for sentence splitting
         """
-        self.model = SentenceTransformer(model_name)
-        self.embedding_dim = self.model.get_sentence_embedding_dimension()
+        self._model_name = model_name
+        self._model = None
+        self._embedding_dim = None
         self._spacy_model_name = spacy_model
         self._nlp = None
+
+    def _get_model(self) -> SentenceTransformer:
+        """Lazily load the sentence-transformer so importing this service does
+        not pull a model into memory until embeddings are actually needed."""
+        if self._model is None:
+            self._model = SentenceTransformer(self._model_name)
+            self._embedding_dim = self._model.get_sentence_embedding_dimension()
+        return self._model
+
+    @property
+    def model(self) -> SentenceTransformer:
+        return self._get_model()
+
+    @property
+    def embedding_dim(self) -> int:
+        self._get_model()
+        return self._embedding_dim
 
     def _get_nlp(self):
         """Lazily load the spaCy pipeline used to split sentences."""

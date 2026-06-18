@@ -1,7 +1,7 @@
 """
 Live API smoke test.
 
-Run this against a running server (uvicorn app.main:app) to exercise the
+Run this against a running server (uvicorn voiceprint.main:app) to exercise the
 profile and adapt endpoints end to end. It is skipped automatically when the
 server is not reachable, so it is safe in a normal pytest run.
 """

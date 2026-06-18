@@ -2,7 +2,7 @@
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend"))
 
-from app.services.voiceprint_service import VoicePrintService
+from voiceprint.services.voiceprint_service import VoicePrintService
 
 SAMPLES = [
     ("I tend to write in short, direct sentences. I don't hedge much. "

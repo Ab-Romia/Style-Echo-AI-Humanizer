@@ -12,7 +12,7 @@ random punctuation. When a signal is ambiguous it leaves the text unchanged.
 import re
 from typing import Any, Dict
 
-from app.models.style_profile import StyleProfile
+from voiceprint.models.style_profile import StyleProfile
 
 
 # Full form on the left, contracted form on the right.
