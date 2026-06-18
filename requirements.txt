@@ -11,6 +11,7 @@ numpy<2
 
 # Demo UI. The app uses the Gradio 6 API (theme passed to launch()).
 gradio>=6.0,<7.0
+matplotlib>=3.8,<4.0
 
 # Core ML and NLP
 torch>=2.4,<3.0
