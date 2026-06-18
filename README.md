@@ -1,332 +1,94 @@
-# VoicePrint: AI Text Humanizer with Style Learning
+---
+title: VoicePrint
+emoji: 🖋️
+colorFrom: green
+colorTo: indigo
+sdk: gradio
+sdk_version: 6.19.0
+app_file: app.py
+pinned: false
+short_description: Measure your writing voice and adapt your own drafts toward it.
+preload_from_hub:
+  - StyleDistance/styledistance
+---
 
-Transform AI-generated text to match your unique writing voice. VoicePrint learns from your writing samples and applies your personal style to any AI-generated content while bypassing detection.
+# VoicePrint
 
-## Problem Statement
+VoicePrint measures the stylometric fingerprint of how you write, learned from your own samples, then adapts your own drafts toward that measured voice. It is for writers who want their drafts to sound like them, and for anyone curious how much of a writing identity survives once you strip the topic out.
 
-AI-generated text has become increasingly detectable through sophisticated detection tools like GPTZero and Originality.ai. Current "humanizer" tools fail in two critical ways:
+## Try it
 
-1. **Generic Output**: They produce text that doesn't match any specific writing style, making it obvious the content was processed
-2. **Poor Detection Bypass**: Simple paraphrasing isn't enough to fool modern AI detectors that analyze linguistic patterns
+Live demo: (Hugging Face Space link)
 
-VoicePrint solves both problems by learning your actual writing patterns and applying them systematically while removing AI fingerprints.
-
-## Key Features
-
-- **Style Learning**: Analyzes 3-10 writing samples to build a complete profile of your writing voice
-- **Linguistic Analysis**: Extracts sentence patterns, vocabulary preferences, and punctuation habits
-- **AI Detection Removal**: Identifies and removes common AI tells (hedging phrases, perfect grammar, repetitive structures)
-- **Style Transfer**: Applies your specific writing patterns to transform text
-- **Validation**: Ensures output matches your style (85%+ similarity) while preserving meaning
-
-## Quick Start
-
-### Backend Setup
-
-```bash
-cd backend
-
-# Run the setup script
-./setup.sh
-
-# Start the server
-./start.sh
-```
-
-The API will be running at `http://localhost:8000`. Visit `http://localhost:8000/docs` for the interactive API documentation.
-
-### Test the API
+Run it locally:
 
 ```bash
-# Make sure the server is running first
-python test_api.py
+pip install -r requirements.txt
+python -m spacy download en_core_web_sm   # if the model is not already present
+python app.py
 ```
 
-## How It Works
+Then open the local URL Gradio prints (default http://localhost:7860). Paste at least three samples of your own writing to build a profile, then paste a draft to adapt.
 
-### 1. Style Profile Creation
+## One measured result
 
-When you provide 3-10 writing samples (minimum 500 words total), VoicePrint extracts:
+With no content words at all, just the relative frequencies of 130 function words, a plain logistic-regression classifier reached macro-F1 0.684 and accuracy 0.889 separating five authors. Five-class chance is 0.20, so the function-word signal sits well above it. That is the number I trust most here, because function words do not track topic, so the signal carries across subjects rather than memorizing one book's vocabulary.
 
-**Linguistic Features:**
-- Average sentence length with standard deviation
-- Sentence complexity (dependency tree depth)
-- Lexical diversity (type-token ratio)
-- Part-of-speech distribution
-- Punctuation patterns (commas, semicolons, em dashes, etc.)
-- Readability scores (Flesch-Kincaid, Gunning Fog, etc.)
+## Why I built this
 
-**Stylometric Markers:**
-- Function word frequencies (the, and, but, so, etc.)
-- N-gram patterns (common phrase preferences)
-- Contraction usage rate
-- Passive vs active voice ratio
-- Sentence starter patterns
-- Transition word usage
+I kept noticing that my own drafts drifted out of my voice when I wrote them in a hurry, and I wanted a way to measure that drift instead of guessing at it. Authorship stylometry already has the tools to put a number on a writing fingerprint. So I built something that measures my voice from my own writing, scores how far a draft sits from it, and nudges the draft back, without pretending to be anyone else.
 
-**Semantic Embeddings:**
-- Sentence-BERT embeddings for each sample
-- Style centroid vector (averaged embeddings)
-- Consistency metrics across samples
-
-### 2. AI Detection Removal
-
-The system analyzes input text for AI tells:
-- Perfect grammar patterns
-- Repetitive sentence structures (especially "lists of three")
-- Overly balanced parallel construction
-- Hedging language ("it's important to note", "it's worth mentioning")
-- Lack of natural variation
-
-Then applies strategic changes:
-- Removes AI hedging phrases
-- Breaks up symmetrical structures
-- Adds natural filler words ("well", "actually", "I mean")
-- Introduces minor typos at human rates (0-2%)
-- Varies sentence length dramatically
-
-### 3. Style Transfer
-
-For each sentence in the text:
-- Adjusts length to match your average ± standard deviation
-- Replaces words outside your typical vocabulary
-- Matches your formality level (contractions vs formal language)
-- Restructures syntax to match your preferred patterns
-- Adjusts passive/active voice ratio
-- Replicates your punctuation style
-
-### 4. Validation
-
-Output is validated by:
-- Computing cosine similarity with your style centroid (target: 85%+)
-- Checking linguistic features align with your profile
-- Verifying readability scores fall within your range
-- Confirming semantic meaning is preserved (BERT score)
-
-If validation fails, the system automatically retries with adjusted parameters.
-
-## API Endpoints
-
-### Create Style Profile
-```bash
-POST /api/v1/profiles
-{
-  "user_id": "your_user_id",
-  "samples": ["text sample 1", "text sample 2", "text sample 3"],
-  "profile_name": "My Writing Style"
-}
-```
-
-### Humanize Text
-```bash
-POST /api/v1/humanize
-{
-  "profile_id": "profile_id_from_creation",
-  "text": "AI-generated text here...",
-  "strength": 0.7,
-  "preserve_meaning": true
-}
-```
-
-### Quick Analysis
-```bash
-POST /api/v1/analyze
-{
-  "text": "Any text to analyze..."
-}
-```
-
-### Get Profile
-```bash
-GET /api/v1/profiles/{profile_id}
-```
-
-### List User Profiles
-```bash
-GET /api/v1/users/{user_id}/profiles
-```
-
-### Delete Profile
-```bash
-DELETE /api/v1/profiles/{profile_id}
-```
-
-## Architecture
+## How it works
 
 ```
-VoicePrint/
-├── backend/
-│   ├── app/
-│   │   ├── api/           # FastAPI routes
-│   │   ├── models/        # Data models (StyleProfile)
-│   │   ├── schemas/       # Pydantic schemas
-│   │   ├── services/      # Core business logic
-│   │   │   ├── linguistic_analyzer.py      # Extract linguistic features
-│   │   │   ├── stylometric_analyzer.py     # Extract stylometric markers
-│   │   │   ├── embedding_analyzer.py       # Sentence-BERT embeddings
-│   │   │   ├── ai_detector_remover.py      # Remove AI patterns
-│   │   │   ├── style_transfer.py           # Apply writing style
-│   │   │   ├── validator.py                # Validate output quality
-│   │   │   └── voiceprint_service.py       # Main orchestrator
-│   │   ├── config.py      # Configuration
-│   │   └── main.py        # FastAPI app
-│   ├── requirements.txt   # Python dependencies
-│   ├── setup.sh          # Setup script
-│   ├── start.sh          # Start server script
-│   └── test_api.py       # Test suite
-└── frontend/             # (Coming soon: Next.js interface)
+your samples
+   -> stylometric profile     interpretable features: sentence stats, lexical
+                              diversity, function words, char n-grams,
+                              readability, punctuation
+   -> StyleDistance           neural style centroid (content-independent);
+      fingerprint             voice match = cosine to that centroid
+   -> in-context rewrite       source draft + your own exemplars + rendered
+      (or rule fallback)       constraints, one model call; no key falls back
+                              to a deterministic rule rewriter
+   -> validation              re-score voice match before vs after, check
+      and report              meaning preserved against your draft, per-sentence diff
 ```
 
-## Technology Stack
+The interpretable side stays readable: you can see the average sentence length, the contraction rate, the punctuation habits. The neural side handles what those features miss. StyleDistance is a 2024 style embedding trained to be content-independent, so two passages on different topics in the same voice land near each other. I build a centroid from your samples and score a candidate by cosine to it.
 
-**Backend:**
-- FastAPI for the REST API
-- PyTorch & HuggingFace Transformers for embeddings
-- Sentence-BERT for semantic analysis
-- spaCy for linguistic parsing
-- NLTK for stylometric features
-- textstat for readability metrics
+## Results
 
-**Planned:**
-- PostgreSQL for user data
-- ChromaDB for embedding storage
-- Redis for caching
-- Next.js frontend with TypeScript
-- TailwindCSS for styling
+Corpus: NLTK Gutenberg, non-overlapping 400-word chunks, five authors (Austen, Carroll, Chesterton, Melville, Shakespeare). Authors with more than one work are tested on a fully held-out work; the two single-work authors are tested on the tail of their only book.
 
-## Related Work & Citations
+| Condition      | Macro-F1 | Accuracy |
+| -------------- | -------- | -------- |
+| char n-grams   | 0.996    | 0.999    |
+| function words | 0.684    | 0.889    |
+| combined       | 0.996    | 0.999    |
 
-This project builds on established research in several areas:
+Feature settings: character n-grams use `TfidfVectorizer(analyzer='char_wb', ngram_range=(2,4), min_df=2, sublinear_tf=True)`; function words use relative frequencies over a 130-word list; the classifier is multinomial logistic regression with `random_state=42`.
 
-**Style Transfer:**
-- Jin et al. (2021) - "Deep Learning for Text Style Transfer: A Survey" - Justification for neural approach
-- Syed et al. (2020) - "Evaluating Prose Style Transfer with the Bible" - Evaluation metrics
+The honest reading: the 0.996 char n-gram score is inflated. This is a small five-author set whose authors are stylistically far apart, and two of them are single-work authors whose test text leaks topic and vocabulary from training. Both effects make the task easier than open-world authorship attribution, so do not read 0.996 as a general accuracy claim. The transferable result is the function-word condition: with zero content words, a 130-dimensional frequency vector still separates these authors well above the 0.20 five-class baseline. That is the topic-independent signal stylometry relies on.
 
-**Stylometric Analysis:**
-- Juola (2006) - "Stylometric Analysis of Literary Texts" - Function word and n-gram features
-- Mahmood et al. (2019) - "Adversarial Authorship Attribution" - Feasibility of mimicking styles
+## What it does not do
 
-**AI Detection:**
-- Mitchell et al. (2023) - "DetectGPT: Zero-Shot Machine-Generated Text Detection" - AI detection patterns
-- Uchendu et al. (2020) - "The Limitations of Stylometry for Detecting Machine-Generated Fake News" - Detection weaknesses
-- OpenAI (2023) - GPT-4 Technical Report - Documented AI text characteristics
+- The evaluation set is small (five authors) and the numbers above are not open-world accuracy.
+- Two authors are single-work, so their per-author scores leak topic and read as a soft upper bound, not cross-domain performance.
+- The rewrite is only as good as the model key you bring. With no key, the rule rewriter makes a few conservative edits (contraction rate and comma rate) and otherwise leaves your text alone.
+- This is voice adaptation on your own writing, not impersonation of someone else, and authorship signals are probabilistic, not proof.
 
-**Embeddings:**
-- Reimers & Gurevych (2019) - "Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks"
-
-**Paraphrasing:**
-- Li et al. (2018) - "Paraphrase Generation with Deep Reinforcement Learning"
-
-## Example Usage
-
-```python
-import requests
-
-# 1. Create a profile from your writing samples
-response = requests.post("http://localhost:8000/api/v1/profiles", json={
-    "user_id": "user123",
-    "samples": [
-        "Here's how I actually write. I tend to use shorter sentences. Sometimes fragments, even.",
-        "Look, I'm not saying this is perfect, but it works for me. The key is being natural.",
-        "You know what bugs me? When people write like robots. Just write how you'd talk."
-    ]
-})
-
-profile_id = response.json()["profile_id"]
-
-# 2. Humanize AI-generated text
-ai_text = """
-It is important to note that effective communication requires careful consideration
-of multiple factors. Furthermore, one must ensure that the message is conveyed clearly
-and concisely. The implementation of proper techniques is essential for success.
-"""
-
-response = requests.post("http://localhost:8000/api/v1/humanize", json={
-    "profile_id": profile_id,
-    "text": ai_text,
-    "strength": 0.7
-})
-
-print(response.json()["humanized_text"])
-# Output will match your casual, direct writing style
-```
-
-## 🚀 Deployment
-
-### Hugging Face Spaces (Easiest)
-
-VoicePrint can be deployed directly to Hugging Face Spaces with the Gradio interface:
+## Reproduce the experiment
 
 ```bash
-# Visit https://huggingface.co/spaces/Ab-Romia/voiceprint
-# Or deploy your own:
-1. Create new Space on Hugging Face
-2. Upload app.py, requirements-hf.txt (rename to requirements.txt), and backend/
-3. Your Space will automatically build and deploy!
+python experiments/authorship_attribution.py
 ```
 
-See [DEPLOY.md](DEPLOY.md) for detailed deployment instructions including:
-- Hugging Face Spaces (with Gradio UI)
-- Docker deployment
-- Railway, Render, AWS EC2
-- Local development
+This downloads the NLTK Gutenberg corpus, splits by work, fits the three feature conditions with a fixed seed, and reports the macro-F1, accuracy, and the per-author confusion matrix recorded in `experiments/results.md`.
 
-### Quick Deploy Commands
+## Tech
 
-```bash
-# Using Docker
-docker build -t voiceprint .
-docker run -p 7860:7860 voiceprint
+Python, Gradio, spaCy, textstat, scikit-learn, NLTK, sentence-transformers with StyleDistance, an OpenAI-compatible client for the bring-your-own-key rewrite (OpenAI or OpenRouter), and FastAPI for the backend service.
 
-# Local with Gradio interface
-pip install -r requirements-hf.txt
-python app.py  # Opens at http://localhost:7860
-```
+---
 
-## Development Roadmap
-
-- [x] Core linguistic analysis engine
-- [x] Stylometric feature extraction
-- [x] Sentence-BERT embedding system
-- [x] AI detection removal pipeline
-- [x] Style transfer engine
-- [x] Validation system
-- [x] REST API with FastAPI
-- [x] Gradio interface for Hugging Face
-- [x] Docker support
-- [x] Deployment guides
-- [ ] PostgreSQL integration
-- [ ] ChromaDB for embeddings
-- [ ] Redis caching layer
-- [ ] Next.js frontend
-- [ ] Chrome extension
-- [ ] User authentication
-- [ ] Rate limiting
-- [ ] API key management
-- [ ] Freemium model implementation
-
-## Known Limitations
-
-1. **Passive to Active Conversion**: Current implementation uses simplified patterns. Could be improved with more sophisticated syntactic transformations.
-
-2. **Vocabulary Replacement**: Currently focuses on formality level. Future versions will include specific word-level vocabulary matching.
-
-3. **In-Memory Storage**: Uses in-memory storage for profiles. Production needs PostgreSQL + ChromaDB.
-
-4. **No LLM Integration**: Currently doesn't use GPT-4 for paraphrasing. Can be added for stronger transformations.
-
-## Contributing
-
-This is an educational project demonstrating AI text transformation and style learning. Feel free to fork and experiment!
-
-## License
-
-MIT License - See LICENSE file for details
-
-## Contact
-
-Built by Ab-Romia - [aabouroumia@gmail.com](mailto:aabouroumia@gmail.com)
-
-## Acknowledgments
-
-Thanks to the researchers whose work made this possible, and to the open-source communities behind spaCy, HuggingFace, FastAPI, and all the other tools used in this project.
+Built by [Ab-Romia](https://github.com/Ab-Romia/VoicePrint).

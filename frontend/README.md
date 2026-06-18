@@ -1,24 +1,19 @@
-# VoicePrint Frontend
+# VoicePrint frontend
 
-Coming soon: A beautiful Next.js interface for VoicePrint.
+A Next.js interface for VoicePrint is planned here. The Gradio app at the repo
+root is the canonical demo for now; this will be a polished web client that
+talks to the FastAPI backend.
 
-## Planned Features
+## Planned
 
-- Simple text input for writing samples
-- Profile management dashboard
-- Text humanization interface
-- Real-time style similarity scores
-- Before/after comparison view
-- Chrome extension integration
+- Paste writing samples and build a voice profile.
+- The voice fingerprint as a radar chart.
+- Adapt a draft and see the voice match before and after, with a per-sentence diff.
 
-## Tech Stack
+## Stack
 
-- Next.js 14 with App Router
-- TypeScript
-- TailwindCSS
-- Shadcn/ui components
-- React Query for data fetching
+- Next.js 16 (App Router) and TypeScript
+- Tailwind CSS
+- A lightweight chart library for the fingerprint
 
-## Development
-
-Check back soon for the frontend implementation!
+Until this ships, run the Gradio demo from the repo root with `python app.py`.
