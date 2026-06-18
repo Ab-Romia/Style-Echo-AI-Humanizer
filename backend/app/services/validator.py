@@ -1,11 +1,11 @@
 """
 Validation and Similarity Scoring System.
 
-Validates the quality of humanized text by checking:
-- Cosine similarity with style centroid
+Validates the quality of an adapted draft by checking:
+- Cosine similarity with the style centroid
 - Linguistic feature alignment
 - Readability score match
-- Semantic meaning preservation
+- Semantic meaning preservation against the author's source draft
 """
 from typing import Dict, Any, List
 import numpy as np
@@ -14,8 +14,8 @@ from app.services.embedding_analyzer import EmbeddingAnalyzer
 from app.models.style_profile import StyleProfile
 
 
-class HumanizationValidator:
-    """Validates quality of humanized text."""
+class OutputValidator:
+    """Validates the quality of an adapted draft."""
 
     def __init__(
         self,
@@ -34,33 +34,33 @@ class HumanizationValidator:
 
     def validate_output(
         self,
-        original_text: str,
-        humanized_text: str,
+        source_draft: str,
+        adapted_text: str,
         profile: StyleProfile,
     ) -> Dict[str, Any]:
         """
-        Validate the humanized output against the style profile.
+        Validate the adapted draft against the style profile.
 
         Args:
-            original_text: Original AI-generated text
-            humanized_text: Humanized output text
-            profile: User's style profile
+            source_draft: The text the author pasted to adapt
+            adapted_text: The adapted output text
+            profile: The author's style profile
 
         Returns:
             Dictionary with validation metrics
         """
         # 1. Compute style similarity
-        style_similarity = self._compute_style_similarity(humanized_text, profile)
+        style_similarity = self._compute_style_similarity(adapted_text, profile)
 
         # 2. Check linguistic feature alignment
-        feature_match = self._check_feature_alignment(humanized_text, profile)
+        feature_match = self._check_feature_alignment(adapted_text, profile)
 
         # 3. Check readability match
-        readability_match = self._check_readability_match(humanized_text, profile)
+        readability_match = self._check_readability_match(adapted_text, profile)
 
-        # 4. Verify semantic preservation
+        # 4. Verify the adapted text still means the same as the source draft
         semantic_preservation = self._verify_semantic_preservation(
-            original_text, humanized_text
+            source_draft, adapted_text
         )
 
         # 5. Calculate overall quality score
@@ -119,6 +119,11 @@ class HumanizationValidator:
         text_features = self.linguistic_analyzer.analyze_text(text)
         profile_features = profile.linguistic_features
 
+        # The 0.75 pass threshold and the scaling constants below (the *5 on
+        # type-token-ratio difference and the *10 on punctuation-density
+        # difference) are heuristics tuned on small samples to turn a raw
+        # feature gap into a [0, 1] match. They are reasonable starting points,
+        # not arbitrary, and would be recalibrated on a larger labeled set.
         matches = {}
 
         # Compare sentence length
@@ -177,21 +182,22 @@ class HumanizationValidator:
         return True
 
     def _verify_semantic_preservation(
-        self, original_text: str, humanized_text: str
+        self, source_draft: str, adapted_text: str
     ) -> float:
         """
-        Verify that semantic meaning is preserved.
+        Verify that meaning is preserved against the author's source draft.
 
         Args:
-            original_text: Original text
-            humanized_text: Humanized text
+            source_draft: The text the author pasted to adapt
+            adapted_text: The adapted output
 
         Returns:
             Semantic similarity score (0-1)
         """
-        # Compute similarity between original and humanized
+        # Compare the adapted output back against the source draft, so a high
+        # score means the adaptation kept the author's intended meaning.
         similarity = self.embedding_analyzer.compute_text_similarity(
-            original_text, humanized_text
+            source_draft, adapted_text
         )
 
         return similarity
@@ -257,7 +263,8 @@ class HumanizationValidator:
         # Check style similarity
         if validation_results["style_similarity"] < 0.8:
             suggestions.append(
-                "Style similarity is low. Consider increasing transformation strength."
+                "Voice match to your profile is low; the draft still reads "
+                "some distance from your samples."
             )
 
         # Check feature alignment
@@ -266,19 +273,20 @@ class HumanizationValidator:
         if "sentence_length_match" in feature_alignment:
             if feature_alignment["sentence_length_match"] < 0.7:
                 suggestions.append(
-                    "Sentence lengths don't match profile well. Adjust sentence merging/splitting."
+                    "Sentence lengths differ from your usual range."
                 )
 
         if "punctuation_match" in feature_alignment:
             if feature_alignment["punctuation_match"] < 0.7:
                 suggestions.append(
-                    "Punctuation patterns differ from profile. Adjust punctuation transformation."
+                    "Punctuation patterns differ from your usual habits."
                 )
 
         # Check semantic preservation
         if validation_results["semantic_preservation"] < 0.85:
             suggestions.append(
-                "Semantic meaning may have changed too much. Reduce transformation strength."
+                "The adapted text drifted from your source draft; check that "
+                "the meaning still holds."
             )
 
         # Check overall quality

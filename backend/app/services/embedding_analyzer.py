@@ -13,15 +13,30 @@ from sklearn.metrics.pairwise import cosine_similarity
 class EmbeddingAnalyzer:
     """Generates and analyzes embeddings for style profiling."""
 
-    def __init__(self, model_name: str = "sentence-transformers/all-MiniLM-L6-v2"):
+    def __init__(
+        self,
+        model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
+        spacy_model: str = "en_core_web_sm",
+    ):
         """
         Initialize the embedding analyzer.
 
         Args:
             model_name: Name of the sentence transformer model to use
+            spacy_model: spaCy pipeline used for sentence splitting
         """
         self.model = SentenceTransformer(model_name)
         self.embedding_dim = self.model.get_sentence_embedding_dimension()
+        self._spacy_model_name = spacy_model
+        self._nlp = None
+
+    def _get_nlp(self):
+        """Lazily load the spaCy pipeline used to split sentences."""
+        if self._nlp is None:
+            import spacy
+
+            self._nlp = spacy.load(self._spacy_model_name)
+        return self._nlp
 
     def generate_embeddings(self, texts: List[str]) -> np.ndarray:
         """
@@ -164,8 +179,10 @@ class EmbeddingAnalyzer:
         Returns:
             List of embedding vectors, one per sentence
         """
-        # Simple sentence splitting (can be improved with spaCy)
-        sentences = [s.strip() for s in text.split('.') if s.strip()]
+        # Split on real sentence boundaries with spaCy rather than on periods,
+        # which mishandles abbreviations, decimals, and ellipses.
+        doc = self._get_nlp()(text)
+        sentences = [sent.text.strip() for sent in doc.sents if sent.text.strip()]
 
         if not sentences:
             return []

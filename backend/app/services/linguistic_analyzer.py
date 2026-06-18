@@ -43,6 +43,9 @@ class LinguisticAnalyzer:
         Returns:
             Dictionary containing all linguistic features
         """
+        if not text or not text.strip():
+            return self._empty_features()
+
         doc = self.nlp(text)
 
         features = {
@@ -55,6 +58,28 @@ class LinguisticAnalyzer:
         }
 
         return features
+
+    def _empty_features(self) -> Dict[str, Any]:
+        """Return a zeroed feature set for empty input."""
+        return {
+            "avg_sentence_length": 0.0,
+            "sentence_length_std": 0.0,
+            "num_sentences": 0,
+            "type_token_ratio": 0.0,
+            "num_unique_words": 0,
+            "num_total_words": 0,
+            "pos_distribution": {},
+            "pos_counts": {},
+            "punctuation_patterns": {},
+            "punctuation_density": 0.0,
+            "flesch_reading_ease": 0.0,
+            "flesch_kincaid_grade": 0.0,
+            "gunning_fog": 0.0,
+            "smog_index": 0.0,
+            "coleman_liau_index": 0.0,
+            "avg_dependency_depth": 0.0,
+            "max_dependency_depth": 0,
+        }
 
     def _analyze_sentences(self, doc) -> Dict[str, float]:
         """
@@ -94,11 +119,17 @@ class LinguisticAnalyzer:
         Returns:
             Dictionary with complexity metrics
         """
-        def get_tree_depth(token) -> int:
+        # Cap recursion so a malformed or cyclic parse cannot blow the stack.
+        max_depth_cap = 100
+
+        def get_tree_depth(token, depth: int = 0) -> int:
             """Get maximum depth of dependency tree from this token."""
-            if not list(token.children):
-                return 0
-            return 1 + max(get_tree_depth(child) for child in token.children)
+            if depth >= max_depth_cap:
+                return depth
+            children = list(token.children)
+            if not children:
+                return depth
+            return max(get_tree_depth(child, depth + 1) for child in children)
 
         sentences = list(doc.sents)
         if not sentences:
@@ -109,8 +140,13 @@ class LinguisticAnalyzer:
 
         depths = []
         for sent in sentences:
-            root = [token for token in sent if token.head == token][0]
-            depths.append(get_tree_depth(root))
+            # A sentence may have zero or several tokens whose head is itself
+            # (fragments, parse errors). Measure depth from every such root and
+            # take the deepest; skip the sentence if none exists.
+            roots = [token for token in sent if token.head == token]
+            if not roots:
+                continue
+            depths.append(max(get_tree_depth(root) for root in roots))
 
         return {
             "avg_dependency_depth": statistics.mean(depths) if depths else 0.0,
@@ -181,13 +217,20 @@ class LinguisticAnalyzer:
         Returns:
             Dictionary with punctuation statistics
         """
+        # Long-dash characters are built from their code points so this source
+        # file contains no literal long dash: U+2014 is the em dash, U+2013 the
+        # en dash, U+2026 the ellipsis.
+        em_dash = chr(0x2014)
+        en_dash = chr(0x2013)
+        ellipsis_char = chr(0x2026)
+
         # Count specific punctuation marks
         comma_count = text.count(',')
         semicolon_count = text.count(';')
         colon_count = text.count(':')
-        em_dash_count = text.count('—') + text.count('--')
-        en_dash_count = text.count('–')
-        ellipsis_count = text.count('...') + text.count('…')
+        em_dash_count = text.count(em_dash) + text.count('--')
+        en_dash_count = text.count(en_dash)
+        ellipsis_count = text.count('...') + text.count(ellipsis_char)
         exclamation_count = text.count('!')
         question_count = text.count('?')
         period_count = text.count('.')
@@ -252,6 +295,9 @@ class LinguisticAnalyzer:
         Returns:
             Aggregated linguistic features across all samples
         """
+        if not samples:
+            return {"total_word_count": 0}
+
         all_features = [self.analyze_text(sample) for sample in samples]
 
         # Aggregate numeric features
@@ -263,9 +309,15 @@ class LinguisticAnalyzer:
 
             for key, value in first_features.items():
                 if isinstance(value, (int, float)):
-                    # Average numeric values
+                    # Average numeric values; also record the spread across
+                    # samples so the profile captures how consistent the
+                    # author is on each axis, not just the mean.
                     values = [f[key] for f in all_features if key in f and isinstance(f[key], (int, float))]
                     aggregated[key] = statistics.mean(values) if values else 0.0
+                    if not key.endswith("_std"):
+                        aggregated[f"{key}_std"] = (
+                            statistics.stdev(values) if len(values) > 1 else 0.0
+                        )
                 elif isinstance(value, dict):
                     # For nested dicts, average each nested value
                     aggregated[key] = {}

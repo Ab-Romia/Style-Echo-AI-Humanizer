@@ -1,0 +1,37 @@
+# VoicePrint dependencies (CPU only). Hugging Face Spaces reads this file
+# directly. pyproject.toml is the human-facing source of truth; these pins are
+# the concrete set this project was built and tested against.
+
+# Install the CPU PyTorch wheel from the official CPU index.
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+# numpy is held below 2 for compatibility with the pinned torch, spaCy, and
+# scikit-learn builds. Lift this only after a smoke test confirms the stack.
+numpy<2
+
+# Demo UI. The app uses the Gradio 6 API (theme passed to launch()).
+gradio>=6.0,<7.0
+
+# Core ML and NLP
+torch>=2.4,<3.0
+transformers>=4.45,<6.0
+sentence-transformers>=3.1,<6.0
+spacy>=3.8,<3.9
+en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
+
+# Interpretable analysis
+textstat>=0.7,<1.0
+scikit-learn>=1.5,<2.0
+nltk>=3.9,<4.0
+
+# Optional rewrite LLM, bring your own key (OpenAI or OpenRouter, same client).
+openai>=1.40,<3.0
+
+# API
+fastapi>=0.112,<1.0
+uvicorn[standard]>=0.30,<1.0
+pydantic>=2.8,<3.0
+pydantic-settings>=2.4,<3.0
+
+# Tests
+pytest>=8.0

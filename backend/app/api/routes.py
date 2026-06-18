@@ -1,166 +1,158 @@
 """
 API Routes for VoicePrint.
 
-Endpoints for profile creation, text humanization, and profile management.
+Endpoints for profile creation, draft adaptation, and profile management. The
+service is instantiated lazily through a dependency so importing this module
+never loads the heavy models.
 """
-from fastapi import APIRouter, HTTPException, status
-from typing import List
 import logging
+from functools import lru_cache
+from typing import List
+
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.schemas.profile import (
+    AdaptRequest,
+    AdaptResponse,
     StyleProfileCreate,
     StyleProfileResponse,
-    HumanizeRequest,
-    HumanizeResponse,
     TextSampleInput,
 )
-from app.services.voiceprint_service import VoicePrintService
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# Initialize the main service
-voiceprint_service = VoicePrintService()
+
+@lru_cache()
+def _build_service():
+    """Build the service once, on first request, not at import time."""
+    from app.config import get_settings
+    from app.services.voiceprint_service import VoicePrintService
+    from app.store.sqlite_store import SqliteProfileStore
+
+    settings = get_settings()
+    store = SqliteProfileStore(settings.profile_db_path)
+    return VoicePrintService(spacy_model=settings.spacy_model, store=store)
 
 
-@router.post("/profiles", response_model=StyleProfileResponse, status_code=status.HTTP_201_CREATED)
-async def create_profile(request: StyleProfileCreate):
+def get_service():
+    """FastAPI dependency that returns the shared service instance."""
+    return _build_service()
+
+
+@router.post(
+    "/profiles",
+    response_model=StyleProfileResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_profile(request: StyleProfileCreate, service=Depends(get_service)):
     """
-    Create a new writing style profile.
+    Build a writing profile from your own samples.
 
-    Upload 3-10 text samples (min 500 words total) to build your profile.
+    Provide 3 to 10 samples (at least 500 words total) to measure your voice.
     """
     try:
-        profile = voiceprint_service.create_style_profile(
+        profile = service.build_profile(
             user_id=request.user_id,
             samples=request.samples,
             profile_name=request.profile_name,
         )
-
         return StyleProfileResponse(**profile.to_dict())
-
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
-        logger.error(f"Error creating profile: {e}")
+        logger.error("Error creating profile: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Something went wrong while building your profile"
+            detail="Something went wrong while building your profile",
         )
 
 
 @router.get("/profiles/{profile_id}", response_model=StyleProfileResponse)
-async def get_profile(profile_id: str):
-    """Get details of a specific style profile."""
+async def get_profile(profile_id: str, service=Depends(get_service)):
+    """Get details of a specific profile."""
     try:
-        profile_data = voiceprint_service.get_profile(profile_id)
-        return StyleProfileResponse(**profile_data)
-
+        return StyleProfileResponse(**service.get_profile(profile_id))
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except Exception as e:
-        logger.error(f"Error fetching profile: {e}")
+        logger.error("Error fetching profile: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Couldn't retrieve that profile"
+            detail="Couldn't retrieve that profile",
         )
 
 
 @router.get("/users/{user_id}/profiles", response_model=List[StyleProfileResponse])
-async def list_user_profiles(user_id: str):
-    """Get all style profiles for a user."""
+async def list_user_profiles(user_id: str, service=Depends(get_service)):
+    """Get all profiles for a user."""
     try:
-        profiles = voiceprint_service.list_user_profiles(user_id)
-        return [StyleProfileResponse(**p) for p in profiles]
-
+        return [StyleProfileResponse(**p) for p in service.list_user_profiles(user_id)]
     except Exception as e:
-        logger.error(f"Error listing profiles: {e}")
+        logger.error("Error listing profiles: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Couldn't load your profiles"
+            detail="Couldn't load your profiles",
         )
 
 
 @router.delete("/profiles/{profile_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_profile(profile_id: str):
-    """Delete a style profile."""
+async def delete_profile(profile_id: str, service=Depends(get_service)):
+    """Delete a profile."""
     try:
-        success = voiceprint_service.delete_profile(profile_id)
-        if not success:
+        if not service.delete_profile(profile_id):
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Profile not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found"
             )
-
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error deleting profile: {e}")
+        logger.error("Error deleting profile: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Couldn't delete that profile"
+            detail="Couldn't delete that profile",
         )
 
 
-@router.post("/humanize", response_model=HumanizeResponse)
-async def humanize_text(request: HumanizeRequest):
+@router.post("/adapt", response_model=AdaptResponse)
+async def adapt_draft(request: AdaptRequest, service=Depends(get_service)):
     """
-    Transform AI-generated text into your writing style.
+    Adapt your own draft toward your measured writing voice.
 
-    Takes AI text and makes it sound like you wrote it.
+    Uses the LLM rewriter when an API key is available, otherwise the
+    rule-based rewriter.
     """
     try:
-        result = voiceprint_service.humanize_text(
+        result = service.adapt_draft(
             profile_id=request.profile_id,
-            ai_text=request.text,
-            strength=request.strength,
-            preserve_meaning=request.preserve_meaning,
+            source_draft=request.source_draft,
+            api_key=request.api_key,
+            base_url=request.base_url,
+            model=request.model,
+            use_llm=request.use_llm,
         )
-
-        return HumanizeResponse(
-            original_text=result["original_text"],
-            humanized_text=result["humanized_text"],
-            similarity_score=result["validation"]["style_similarity"],
-            ai_detection_score=result["ai_removal_metrics"]["improved_ai_score"],
-            transformation_metadata=result["metadata"],
-        )
-
+        return AdaptResponse(**result)
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
-        logger.error(f"Error humanizing text: {e}")
+        logger.error("Error adapting draft: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Something went wrong during humanization"
+            detail="Something went wrong while adapting your draft",
         )
 
 
 @router.post("/analyze")
-async def quick_analyze(request: TextSampleInput):
-    """
-    Quick analysis of text without creating a profile.
-
-    Good for testing what features we extract from your writing.
-    """
+async def quick_analyze(request: TextSampleInput, service=Depends(get_service)):
+    """Analyze a single text without building a profile."""
     try:
-        analysis = voiceprint_service.quick_analysis(request.text)
-        return analysis
-
+        return service.quick_analysis(request.text)
     except Exception as e:
-        logger.error(f"Error analyzing text: {e}")
+        logger.error("Error analyzing text: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Analysis failed"
+            detail="Analysis failed",
         )
 
 

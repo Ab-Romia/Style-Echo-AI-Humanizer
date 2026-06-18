@@ -18,16 +18,24 @@ settings = get_settings()
 
 app = FastAPI(
     title="VoicePrint API",
-    description="AI text humanizer that learns and applies your writing style",
+    description="Measure your writing voice and adapt your drafts toward it",
     version="0.1.0",
 )
 
-# CORS setup for frontend
+# CORS is locked to known origins. Add the deployed frontend origin here once
+# its URL is confirmed; do not widen this to "*".
+ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:7860",
+    # "https://your-frontend-domain.example",  # set to the real origin
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Lock this down in production
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 

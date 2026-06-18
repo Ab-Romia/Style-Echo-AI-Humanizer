@@ -29,9 +29,9 @@ ENV/
 *.sqlite
 chroma_data/
 
-# Models and data
-models/
-data/
+# Model weights and downloaded data (anchored to repo root, not the Python package)
+/models/
+/data/
 *.pkl
 *.pt
 *.pth

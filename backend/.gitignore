@@ -40,9 +40,9 @@ wheels/
 chroma_data/
 *.log
 
-# Models and data
-models/
-data/
+# Model weights and downloaded data (anchored, not the Python package)
+/models/
+/data/
 *.pkl
 *.pt
 *.pth

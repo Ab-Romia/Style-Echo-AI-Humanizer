@@ -11,27 +11,21 @@ class Settings(BaseSettings):
     api_port: int = 8000
     debug: bool = True
 
-    # Database Configuration
-    database_url: str = "postgresql://user:password@localhost:5432/voiceprint"
-    redis_url: str = "redis://localhost:6379/0"
-
-    # ChromaDB Configuration
-    chroma_persist_dir: str = "./chroma_data"
-
-    # Security
-    secret_key: str = "your-secret-key-change-in-production"
-    algorithm: str = "HS256"
-    access_token_expire_minutes: int = 30
-
-    # OpenAI API (optional)
-    openai_api_key: str = ""
-
-    # Rate Limiting
-    free_tier_daily_limit: int = 3
-
     # Model Configuration
     sentence_transformer_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    style_model: str = "StyleDistance/styledistance"
     spacy_model: str = "en_core_web_sm"
+
+    # Profile storage. SQLite file lives under a gitignored data dir.
+    profile_db_path: str = "data/voiceprint.db"
+
+    # Optional rewrite LLM (bring your own key). All empty by default; a key is
+    # never committed. The client is OpenAI-compatible: leave the base URL at
+    # the OpenAI default, or set it to https://openrouter.ai/api/v1 for
+    # OpenRouter. Read from the environment so nothing sensitive lives in code.
+    openai_api_key: str = ""
+    openai_base_url: str = ""
+    openai_model: str = "gpt-4o-mini"
 
     class Config:
         env_file = ".env"

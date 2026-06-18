@@ -35,23 +35,35 @@ class StyleProfileResponse(BaseModel):
     embedding_metadata: Dict[str, Any]
 
 
-class HumanizeRequest(BaseModel):
-    """Schema for text humanization request."""
+class AdaptRequest(BaseModel):
+    """Schema for a draft-adaptation request."""
 
-    profile_id: str = Field(..., description="Style profile ID to use")
-    text: str = Field(..., min_length=10, description="AI-generated text to humanize")
-    strength: float = Field(0.7, ge=0.0, le=1.0, description="Humanization strength (0-1)")
-    preserve_meaning: bool = Field(True, description="Whether to preserve semantic meaning")
+    profile_id: str = Field(..., description="Style profile ID to adapt toward")
+    source_draft: str = Field(
+        ..., min_length=10, description="Your draft to adapt toward your voice"
+    )
+    use_llm: bool = Field(
+        True, description="Use the LLM rewriter when a key is available"
+    )
+    api_key: Optional[str] = Field(
+        None, description="Optional bring-your-own API key for the LLM rewriter"
+    )
+    base_url: Optional[str] = Field(
+        None, description="Optional OpenAI-compatible base URL (e.g. OpenRouter)"
+    )
+    model: Optional[str] = Field(None, description="Optional chat model name")
 
 
-class HumanizeResponse(BaseModel):
-    """Schema for humanization response."""
+class AdaptResponse(BaseModel):
+    """Schema for a draft-adaptation response."""
 
-    original_text: str
-    humanized_text: str
-    similarity_score: float
-    ai_detection_score: Optional[float]
-    transformation_metadata: Dict[str, Any]
+    source_draft: str
+    adapted_text: str
+    voice_match_before: float
+    voice_match_after: float
+    rewrite_path: str
+    validation: Dict[str, Any]
+    feedback: Dict[str, Any]
 
 
 class ValidationMetrics(BaseModel):

@@ -1,0 +1,40 @@
+[project]
+name = "voiceprint"
+version = "0.2.0"
+description = "Authorship-stylometry engine that measures a writer's voice from their own samples and adapts their own drafts toward that baseline."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Ab-Romia", email = "aabouroumia@gmail.com" }]
+keywords = ["nlp", "stylometry", "authorship", "style-transfer", "styledistance"]
+
+dependencies = [
+    "numpy<2",
+    "gradio>=5.0,<6.0",
+    "torch==2.4.1",
+    "transformers>=4.44,<5.0",
+    "sentence-transformers>=3.0,<6.0",
+    "spacy>=3.8,<3.9",
+    "textstat>=0.7,<1.0",
+    "scikit-learn>=1.5,<2.0",
+    "nltk>=3.9,<4.0",
+    "openai>=1.40,<2.0",
+    "fastapi>=0.112,<1.0",
+    "uvicorn[standard]>=0.30,<1.0",
+    "pydantic>=2.8,<3.0",
+    "pydantic-settings>=2.4,<3.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0,<9.0"]
+
+[project.urls]
+Homepage = "https://github.com/Ab-Romia/VoicePrint"
+Repository = "https://github.com/Ab-Romia/VoicePrint"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"

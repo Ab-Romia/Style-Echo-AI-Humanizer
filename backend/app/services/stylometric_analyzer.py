@@ -18,6 +18,37 @@ from nltk.corpus import stopwords
 import nltk
 
 
+# Fixed, content-independent function-word list. The vector built over this
+# list always has the same length and the same order, so two profiles can be
+# compared coordinate by coordinate. Authorship work relies on function words
+# because they are used unconsciously and do not track topic.
+FUNCTION_WORD_LIST = [
+    "a", "about", "above", "after", "again", "against", "all", "am", "an",
+    "and", "another", "any", "anybody", "anyone", "anything", "are", "around",
+    "as", "at", "back", "be", "because", "been", "before", "being", "below",
+    "beneath", "beside", "between", "beyond", "both", "but", "by", "can",
+    "cannot", "could", "did", "do", "does", "down", "during", "each", "either",
+    "enough", "even", "ever", "every", "everybody", "everyone", "everything",
+    "few", "for", "from", "further", "had", "has", "have", "he", "her", "here",
+    "hers", "herself", "him", "himself", "his", "how", "however", "i", "if",
+    "in", "into", "is", "it", "its", "itself", "just", "less", "many", "may",
+    "me", "might", "mine", "more", "most", "much", "must", "my", "myself",
+    "near", "neither", "never", "no", "nobody", "none", "nor", "not", "nothing",
+    "now", "of", "off", "often", "on", "once", "one", "only", "onto", "or",
+    "other", "others", "ought", "our", "ours", "ourselves", "out", "over",
+    "past", "perhaps", "quite", "rather", "really", "she", "should", "since",
+    "so", "some", "somebody", "someone", "something", "still", "such", "than",
+    "that", "the", "their", "theirs", "them", "themselves", "then", "there",
+    "these", "they", "this", "those", "though", "through", "throughout", "thus",
+    "to", "together", "too", "toward", "towards", "under", "underneath",
+    "until", "unto", "up", "upon", "us", "very", "was", "we", "were", "what",
+    "whatever", "when", "whenever", "where", "whereas", "wherever", "whether",
+    "which", "whichever", "while", "who", "whoever", "whom", "whose", "why",
+    "will", "with", "within", "without", "would", "yes", "yet", "you", "your",
+    "yours", "yourself", "yourselves",
+]
+
+
 class StylometricAnalyzer:
     """Analyzes text for stylometric markers."""
 
@@ -106,21 +137,31 @@ class StylometricAnalyzer:
             return {
                 "function_word_frequencies": {},
                 "function_word_ratio": 0.0,
+                "function_word_vector": [0.0] * len(FUNCTION_WORD_LIST),
+                "function_word_vector_order": list(FUNCTION_WORD_LIST),
             }
 
-        # Count function words
+        word_freq = Counter(words)
+
+        # Sparse dict over the legacy short list (kept for backward compat).
         function_word_counts = {}
         total_function_words = 0
-
         for fw in self.FUNCTION_WORDS:
-            count = words.count(fw)
+            count = word_freq.get(fw, 0)
             if count > 0:
                 function_word_counts[fw] = count / word_count
                 total_function_words += count
 
+        # Fixed-length, fixed-order frequency vector over the full stoplist.
+        function_word_vector = [
+            word_freq.get(fw, 0) / word_count for fw in FUNCTION_WORD_LIST
+        ]
+
         return {
             "function_word_frequencies": function_word_counts,
             "function_word_ratio": total_function_words / word_count if word_count > 0 else 0.0,
+            "function_word_vector": function_word_vector,
+            "function_word_vector_order": list(FUNCTION_WORD_LIST),
         }
 
     def _analyze_ngrams(self, text: str, n_values: List[int] = [2, 3]) -> Dict[str, Any]:
@@ -309,6 +350,9 @@ class StylometricAnalyzer:
         Returns:
             Aggregated stylometric features across all samples
         """
+        if not samples:
+            return {}
+
         all_features = [self.analyze_text(sample) for sample in samples]
 
         # Aggregate features
@@ -317,7 +361,23 @@ class StylometricAnalyzer:
         if all_features:
             first_features = all_features[0]
 
+            # Average the fixed-length function-word vector coordinate by
+            # coordinate, and carry the order list through unchanged.
+            vectors = [
+                f["function_word_vector"]
+                for f in all_features
+                if isinstance(f.get("function_word_vector"), list)
+            ]
+            if vectors:
+                length = len(vectors[0])
+                aggregated["function_word_vector"] = [
+                    statistics.mean(v[i] for v in vectors) for i in range(length)
+                ]
+                aggregated["function_word_vector_order"] = list(FUNCTION_WORD_LIST)
+
             for key, value in first_features.items():
+                if key in ("function_word_vector", "function_word_vector_order"):
+                    continue
                 if isinstance(value, (int, float)):
                     # Average numeric values
                     values = [f[key] for f in all_features if key in f and isinstance(f[key], (int, float))]
