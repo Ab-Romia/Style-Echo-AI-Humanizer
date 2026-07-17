@@ -18,7 +18,7 @@ VoicePrint measures the stylometric fingerprint of how you write, learned from y
 
 ## Try it
 
-Live demo: (Hugging Face Space link)
+Live demo: [huggingface.co/spaces/Ab-Romia/voiceprint](https://huggingface.co/spaces/Ab-Romia/voiceprint)
 
 Run it locally:
 
